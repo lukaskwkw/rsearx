@@ -1,0 +1,57 @@
+name: release
+
+on:
+  push:
+    branches: ["master"]
+
+env:
+  CARGO_TERM_COLOR: always
+# TODO maybe change rust-cache to normal version like rust-cache@2 or something
+jobs:
+  coverage:
+    name: Build & Collect test coverage
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: llvm-tools-preview
+          target: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Build release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: Collect coverage data
+        uses: actions-rs/cargo@v1
+        with:
+          command: llvm-cov
+          args: nextest --html
+      - name: Zip executable
+        uses: vimtor/action-zip@v1
+        with:
+          files: target/x86_64-unknown-linux-gnu/release/rsearx
+          dest: rsearx.zip
+      - name: Zip coverage data
+        uses: vimtor/action-zip@v1
+        with:
+          files: target\llvm-cov\html
+          dest: coverage.zip
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "lts/*"
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
