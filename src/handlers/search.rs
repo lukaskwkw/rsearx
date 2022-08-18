@@ -5,9 +5,9 @@ use actix_web::{
     web::{self, Data},
     HttpResponse, Responder,
 };
+use log::info;
 use rand::{self, thread_rng, Rng};
 use serde::Deserialize;
-use serde_json::{Map, Value};
 
 #[derive(Deserialize)]
 pub struct Query {
@@ -28,9 +28,9 @@ pub async fn search(
         // drop(instances_guard); clippy has some issues with drop so using bracket instead { }
         if is_empty {
             let fetched_instances = client.fetch_instances().await;
-            println!("instanes len {}", fetched_instances.len());
+            info!("instanes len {}", fetched_instances.len());
             let best_grade_instance_urls = get_filtered_urls(&fetched_instances);
-            println!("best grades len {}", best_grade_instance_urls.len());
+            info!("best grades len {}", best_grade_instance_urls.len());
             let mut instances_guard = instances.lock().unwrap();
             best_grade_instance_urls.iter().for_each(|inst| {
                 instances_guard.push(inst.to_string());

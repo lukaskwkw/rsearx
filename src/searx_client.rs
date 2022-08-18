@@ -72,7 +72,7 @@ fn get_insance_search_url(instance_url: &str, query: &str) -> Url {
         .unwrap()
         .join(&search_route)
         .unwrap();
-    println!("instance full url {url}");
+    info!("instance full url {url}");
 
     url
 }
