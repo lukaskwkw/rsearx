@@ -9,6 +9,7 @@ mod searx_client;
 mod handlers {
     pub mod search;
 }
+mod filter;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

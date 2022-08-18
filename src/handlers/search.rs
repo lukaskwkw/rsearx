@@ -1,4 +1,4 @@
-use crate::searx_client::SearxClient;
+use crate::{searx_client::SearxClient, filter::get_filtered_urls};
 use actix_web::{
     web::{self, Data},
     HttpResponse, Responder,
@@ -15,21 +15,7 @@ pub async fn search(params: web::Query<Query>, client: Data<SearxClient>) -> imp
     let body = client.get_instances().await;
     let instances = &body["instances"].as_object().unwrap();
     println!("instanes len {}", instances.len());
-    let best_grade_instance_urls: Vec<_> = instances
-        .iter()
-        .filter_map(|k| {
-            let grade: String = k.1["html"]["grade"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let network_type: String = k.1["network_type"].as_str().unwrap_or_default().to_string();
-            if ["C", "V"].contains(&&grade[..]) && network_type == "normal" {
-                Some(k.0)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let best_grade_instance_urls = get_filtered_urls(instances);
     println!("best grades len {}", best_grade_instance_urls.len());
 
     let url = get_random_instance_url(best_grade_instance_urls);
