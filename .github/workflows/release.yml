@@ -31,7 +31,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --target x86_64-unknown-linux-gnu
+
       - name: Collect coverage data
         uses: actions-rs/cargo@v1
         with:
@@ -45,7 +46,7 @@ jobs:
       - name: Zip coverage data
         uses: vimtor/action-zip@v1
         with:
-          files: target\llvm-cov\html
+          files: target/llvm-cov/html
           dest: coverage.zip
       - name: Setup Node.js
         uses: actions/setup-node@v2
