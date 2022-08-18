@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     let base_url = "https://searx.space/".to_string();
     let client = SearxClient::new(base_url);
     let client = Data::new(client);
-    let instances: Map<String, Value> = Map::new();
+    let instances: Vec<String> = Vec::new();
     let instances = Data::new(Mutex::new(instances));
 
     HttpServer::new(move || {
@@ -49,3 +49,4 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+// TODO fetch again after every hour

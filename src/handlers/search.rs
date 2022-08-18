@@ -16,7 +16,7 @@ pub struct Query {
 
 pub async fn search(
     params: web::Query<Query>,
-    instances: Data<Mutex<Map<String, Value>>>,
+    instances: Data<Mutex<Vec<String>>>,
     client: Data<SearxClient>,
 ) -> impl Responder {
     {
@@ -28,20 +28,20 @@ pub async fn search(
         // drop(instances_guard); clippy has some issues with drop so using bracket instead { }
         if is_empty {
             let fetched_instances = client.fetch_instances().await;
+            println!("instanes len {}", fetched_instances.len());
+            let best_grade_instance_urls = get_filtered_urls(&fetched_instances);
+            println!("best grades len {}", best_grade_instance_urls.len());
             let mut instances_guard = instances.lock().unwrap();
-            fetched_instances.iter().for_each(|inst| {
-                instances_guard.insert(inst.0.to_string(), inst.1.clone());
+            best_grade_instance_urls.iter().for_each(|inst| {
+                instances_guard.push(inst.to_string());
             })
         };
     }
     let url;
     {
         let instances = instances.lock().unwrap();
-        println!("instanes len {}", instances.len());
-        let best_grade_instance_urls = get_filtered_urls(&instances);
-        println!("best grades len {}", best_grade_instance_urls.len());
-
-        url = get_random_instance_url(best_grade_instance_urls);
+        let instance_urls = instances.iter().map(|instance| instance).collect();
+        url = get_random_instance_url(instance_urls);
     }
     let body = client
         .get_instance_search_body(&url, &params.q.clone().unwrap_or_default())

@@ -11,7 +11,7 @@ pub struct SearxClient {
     base_url: Url,
 }
 
-static AGENT: &str = "Mozilla/5.0 (X11; Linux i686; rv:103.0) Gecko/20100101 Firefox/103.0";
+static AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0";
 
 impl SearxClient {
     pub fn new(base_url: String) -> Self {
@@ -40,9 +40,10 @@ impl SearxClient {
         let url = get_insance_search_url(instance_url, query);
         let mut headers = HeaderMap::new();
         headers.insert(header::USER_AGENT, HeaderValue::from_str(AGENT).unwrap());
+        // headers.insert(header::CONNECTION, HeaderValue::from_str("keep").unwrap());
         headers.insert(
             header::ACCEPT_LANGUAGE,
-            HeaderValue::from_str("en;q=0.8, pl;q=0.7, *;q=0.5").unwrap(),
+            HeaderValue::from_str("en-US,en;q=0.5").unwrap(),
         );
         let body = self
             .http_client
