@@ -1,11 +1,17 @@
-use reqwest::{Client, Url};
-use serde_json::Value;
+use log::info;
+use reqwest::{
+    header::{self, HeaderMap, HeaderValue},
+    Client, Url,
+};
+use serde_json::{Map, Value};
 
 #[derive(Debug)]
 pub struct SearxClient {
     http_client: Client,
     base_url: Url,
 }
+
+static AGENT: &str = "Mozilla/5.0 (X11; Linux i686; rv:103.0) Gecko/20100101 Firefox/103.0";
 
 impl SearxClient {
     pub fn new(base_url: String) -> Self {
@@ -14,22 +20,35 @@ impl SearxClient {
             http_client: Client::new(),
         }
     }
-    pub async fn get_instances(&self) -> Value {
+    pub async fn fetch_instances(&self) -> Map<String, Value> {
+        info!("start fetching");
         let url = Url::join(&self.base_url, "data/instances.json").unwrap();
-        self.http_client
+        let body: Value = self
+            .http_client
             .get(url)
             .send()
             .await
             .unwrap()
             .json()
             .await
-            .unwrap()
+            .unwrap();
+        info!("end of fetching");
+        let instances: Map<String, Value> = body["instances"].as_object().unwrap().clone();
+        instances
     }
     pub async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String {
         let url = get_insance_search_url(instance_url, query);
+        let mut headers = HeaderMap::new();
+        headers.insert(header::USER_AGENT, HeaderValue::from_str(AGENT).unwrap());
+        headers.insert(
+            header::ACCEPT_LANGUAGE,
+            HeaderValue::from_str("en;q=0.8, pl;q=0.7, *;q=0.5").unwrap(),
+        );
         let body = self
             .http_client
             .get(url)
+            .headers(headers)
+            // .header("Connection", "keep")
             .send()
             .await
             .unwrap()
