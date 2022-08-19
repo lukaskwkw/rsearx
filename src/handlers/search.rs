@@ -19,6 +19,21 @@ pub async fn search(
     cache: Data<Mutex<Cache>>,
     client: Data<SearxClient>,
 ) -> impl Responder {
+    populate_cache_if_needed(&cache, &client).await;
+    let url = get_random_url_from_cache(&cache);
+    let body = client
+        .get_instance_search_body(&url, &params.q.clone().unwrap_or_default())
+        .await;
+    HttpResponse::Ok().body(body)
+}
+
+fn get_random_url_from_cache(cache: &Data<Mutex<Cache>>) -> String {
+    let cache_guard = cache.lock().unwrap();
+    let instance_urls = &cache_guard.instances;
+    get_random_instance_url(instance_urls)
+}
+
+async fn populate_cache_if_needed(cache: &Data<Mutex<Cache>>, client: &Data<SearxClient>) {
     let should_fetch;
     {
         let cache_guard = cache.lock().unwrap();
@@ -36,16 +51,6 @@ pub async fn search(
             .map(|url| url.to_string())
             .collect::<Vec<String>>();
     }
-    let url;
-    {
-        let cache_guard = cache.lock().unwrap();
-        let instance_urls = &cache_guard.instances;
-        url = get_random_instance_url(instance_urls);
-    }
-    let body = client
-        .get_instance_search_body(&url, &params.q.clone().unwrap_or_default())
-        .await;
-    HttpResponse::Ok().body(body)
 }
 
 fn get_random_instance_url(best_grade_instance_urls: &Vec<String>) -> String {
@@ -85,6 +90,14 @@ mod tests {
         };
         assert!(!ttl_exceeded(&cache));
 
+        let creation_time = SystemTime::now();
+        let cache = Cache {
+            creation_time,
+            instances: Vec::new(),
+            ttl: Duration::from_secs(25),
+        };
+        assert!(!ttl_exceeded(&cache));
+
         let creation_time = creation_time
             .checked_add(Duration::from_secs((HOUR + 200).into()))
             .unwrap();
@@ -92,6 +105,16 @@ mod tests {
             creation_time,
             instances: Vec::new(),
             ttl: Duration::from_secs(HOUR.into()),
+        };
+        assert!(ttl_exceeded(&cache));
+
+        let creation_time = creation_time
+            .checked_add(Duration::from_secs(2 + 2))
+            .unwrap();
+        let cache = Cache {
+            creation_time,
+            instances: Vec::new(),
+            ttl: Duration::from_secs(2),
         };
         assert!(ttl_exceeded(&cache));
     }
