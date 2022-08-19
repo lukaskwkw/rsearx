@@ -11,7 +11,8 @@ pub struct SearxClient {
     base_url: Url,
 }
 
-static AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0";
+static AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0";
 
 impl SearxClient {
     pub fn new(base_url: String) -> Self {
