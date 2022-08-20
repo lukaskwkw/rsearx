@@ -1,3 +1,7 @@
+#[cfg(test)]
+use mockall::automock;
+
+use async_trait::async_trait;
 use log::info;
 use reqwest::{
     header::{self, HeaderMap, HeaderValue},
@@ -14,14 +18,16 @@ pub struct SearxClient {
 static AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0";
 
-impl SearxClient {
-    pub fn new(base_url: String) -> Self {
-        Self {
-            base_url: Url::parse(&base_url).unwrap(),
-            http_client: Client::new(),
-        }
-    }
-    pub async fn fetch_instances(&self) -> Map<String, Value> {
+#[cfg_attr(test, automock)]
+#[async_trait]
+pub trait SearxProvider : Sync + Send {
+    async fn fetch_instances(&self) -> Map<String, Value>;
+    async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String;
+}
+
+#[async_trait]
+impl SearxProvider for SearxClient {
+    async fn fetch_instances(&self) -> Map<String, Value> {
         info!("start fetching");
         let url = Url::join(&self.base_url, "data/instances.json").unwrap();
         let body: Value = self
@@ -37,7 +43,7 @@ impl SearxClient {
         let instances: Map<String, Value> = body["instances"].as_object().unwrap().clone();
         instances
     }
-    pub async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String {
+    async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String {
         let url = get_insance_search_url(instance_url, query);
         let mut headers = HeaderMap::new();
         headers.insert(header::USER_AGENT, HeaderValue::from_str(AGENT).unwrap());
@@ -58,6 +64,15 @@ impl SearxClient {
             .await
             .unwrap();
         convert_html_urls_to_absolute(body, instance_url)
+    }
+}
+
+impl SearxClient {
+    pub fn new(base_url: String) -> Self {
+        Self {
+            base_url: Url::parse(&base_url).unwrap(),
+            http_client: Client::new(),
+        }
     }
 }
 

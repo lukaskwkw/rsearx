@@ -1,3 +1,4 @@
+use log::trace;
 use serde_json::{Map, Value};
 
 pub fn get_filtered_urls(instances: &Map<String, Value>) -> Vec<&String> {
@@ -9,6 +10,7 @@ pub fn get_filtered_urls(instances: &Map<String, Value>) -> Vec<&String> {
                 .unwrap_or_default()
                 .to_string();
             let network_type: String = k.1["network_type"].as_str().unwrap_or_default().to_string();
+            trace!("grade {grade}, network_type {network_type}");
             if ["C", "V"].contains(&&grade[..]) && network_type == "normal" {
                 Some(k.0)
             } else {

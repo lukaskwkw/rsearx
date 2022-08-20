@@ -1,6 +1,6 @@
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 
-use crate::{searx_client::SearxClient, Cache};
+use crate::{searx_client::SearxProvider, Cache};
 use actix_web::{
     web::{self, Data},
     HttpResponse, Responder,
@@ -18,7 +18,7 @@ pub struct Query {
 pub async fn search(
     params: web::Query<Query>,
     cache: Data<Mutex<Cache>>,
-    client: Data<SearxClient>,
+    client: Data<Arc<dyn SearxProvider>>,
 ) -> impl Responder {
     search_helpers::populate_cache_if_needed(&cache, &client).await;
     let url = search_helpers::get_random_url_from_cache(&cache);

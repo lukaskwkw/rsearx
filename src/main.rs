@@ -1,8 +1,6 @@
-use std::{
-    fs::File,
-    sync::Mutex,
-    time::{Duration, SystemTime},
-};
+#[cfg(test)]
+use mock_instant::Instant;
+use std::{fs::File, sync::{Mutex, Arc}, time::Duration};
 
 use actix_web::{
     web::{self, Data},
@@ -10,9 +8,13 @@ use actix_web::{
 };
 use log::*;
 use simplelog::*;
+#[cfg(not(test))]
+use std::time::Instant;
 
 use handlers::search::search;
 use searx_client::SearxClient;
+
+use crate::searx_client::SearxProvider;
 mod searx_client;
 mod handlers {
     pub mod search;
@@ -20,8 +22,9 @@ mod handlers {
 }
 mod filter;
 
+#[derive(Debug)]
 pub struct Cache {
-    creation_time: SystemTime,
+    creation_time: Instant,
     ttl: Duration,
     instances: Vec<String>,
 }
@@ -47,14 +50,14 @@ async fn main() -> std::io::Result<()> {
     info!("Logger initialized!");
     let base_url = "https://searx.space/".to_string();
     let client = SearxClient::new(base_url);
-    let client = Data::new(client);
+    let client: Data<Arc<dyn SearxProvider>> = Data::new(Arc::new(client));
     let cache = Cache {
         instances: Vec::new(),
-        creation_time: SystemTime::now(),
+        creation_time: Instant::now(),
         ttl: Duration::from_secs(HOUR.into()),
     };
     let cache = Data::new(Mutex::new(cache));
-
+    
     HttpServer::new(move || {
         App::new()
             .route("/search", web::get().to(search))
@@ -65,4 +68,3 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-// TODO fetch again after every hour
