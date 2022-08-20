@@ -16,6 +16,7 @@ use searx_client::SearxClient;
 mod searx_client;
 mod handlers {
     pub mod search;
+    pub mod search_helpers;
 }
 mod filter;
 
