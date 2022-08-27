@@ -20,7 +20,7 @@ static AGENT: &str =
 
 #[cfg_attr(test, automock)]
 #[async_trait]
-pub trait SearxProvider : Sync + Send {
+pub trait SearxProvider: Sync + Send {
     async fn fetch_instances(&self) -> Map<String, Value>;
     async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String;
 }
@@ -46,7 +46,13 @@ impl SearxProvider for SearxClient {
     async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String {
         let url = get_insance_search_url(instance_url, query);
         let mut headers = HeaderMap::new();
+        url.host_str().map(|url| {
+            headers.insert(header::HOST, HeaderValue::from_str(url).unwrap());
+        }).unwrap_or_default();
         headers.insert(header::USER_AGENT, HeaderValue::from_str(AGENT).unwrap());
+        headers.insert(header::TRANSFER_ENCODING, header::TRAILER.into());
+
+        headers.insert(header::ACCEPT, HeaderValue::from_str("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8").unwrap());
         // headers.insert(header::CONNECTION, HeaderValue::from_str("keep").unwrap());
         headers.insert(
             header::ACCEPT_LANGUAGE,
