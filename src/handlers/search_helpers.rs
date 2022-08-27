@@ -1,6 +1,6 @@
 use rand::{self, thread_rng, Rng};
 
-use crate::filter::get_filtered_urls;
+use crate::{filter::get_filtered_urls, AppConfig};
 
 use log::{debug, info};
 
@@ -8,7 +8,7 @@ use crate::searx_client::SearxProvider;
 
 use crate::Cache;
 
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use actix_web::web::Data;
 
@@ -21,6 +21,7 @@ pub fn get_random_url_from_cache(cache: &Data<Mutex<Cache>>) -> String {
 pub(crate) async fn populate_cache_if_needed(
     cache: &Data<Mutex<Cache>>,
     client: &Data<Arc<dyn SearxProvider>>,
+    app_config: &Data<Mutex<AppConfig>>,
 ) {
     let should_fetch;
     {
@@ -31,7 +32,11 @@ pub(crate) async fn populate_cache_if_needed(
     if should_fetch {
         let fetched_instances = client.fetch_instances().await;
         info!("instanes len {}", fetched_instances.len());
-        let best_grade_instance_urls = get_filtered_urls(&fetched_instances);
+        let app_conf_guard = app_config.lock().unwrap();
+        let filter = app_conf_guard.filter.clone().unwrap_or_default();
+        info!("filter: {filter:?}");
+        let best_grade_instance_urls = get_filtered_urls(&fetched_instances, &filter);
+
         info!("best grades len {}", best_grade_instance_urls.len());
         let mut cache_guard = cache.lock().unwrap();
         cache_guard.instances = best_grade_instance_urls
@@ -134,7 +139,8 @@ pub(crate) mod tests {
         let cache = Data::new(Mutex::new(cache));
         let client_mock = Arc::new(client_mock) as Arc<dyn SearxProvider>;
         let client_mock = Data::new(client_mock);
-        populate_cache_if_needed(&cache, &client_mock).await;
+        let app_conf = Data::new(Mutex::new(AppConfig::default()));
+        populate_cache_if_needed(&cache, &client_mock, &app_conf).await;
         let cache_guard = cache.lock().unwrap();
         let instances = &cache_guard.instances;
 
@@ -157,7 +163,8 @@ pub(crate) mod tests {
         let cache = Data::new(Mutex::new(cache));
         let client_mock = Arc::new(client_mock) as Arc<dyn SearxProvider>;
         let client_mock = Data::new(client_mock);
-        populate_cache_if_needed(&cache, &client_mock).await;
+        let app_conf = Data::new(Mutex::new(AppConfig::default()));
+        populate_cache_if_needed(&cache, &client_mock, &app_conf).await;
         let instances = &cache.lock().unwrap().instances;
         assert_eq!(instances.len(), 1);
         assert_eq!(instances[0], "instance".to_string());
@@ -175,8 +182,8 @@ pub(crate) mod tests {
         let cache = Data::new(Mutex::new(cache));
         let client_mock = Arc::new(client_mock) as Arc<dyn SearxProvider>;
         let client_mock = Data::new(client_mock);
-        populate_cache_if_needed(&cache, &client_mock).await;
-        
+        let app_conf = Data::new(Mutex::new(AppConfig::default()));
+        populate_cache_if_needed(&cache, &client_mock, &app_conf).await;
         let instances = &cache.lock().unwrap().instances;
         assert_eq!(instances.len(), 1);
         assert_eq!(instances[0], "1".to_string());
@@ -197,8 +204,9 @@ pub(crate) mod tests {
         let cache = Data::new(Mutex::new(cache));
         let client_mock = Arc::new(client_mock) as Arc<dyn SearxProvider>;
         let client_mock = Data::new(client_mock);
-        populate_cache_if_needed(&cache, &client_mock).await;
-        
+        let app_conf = Data::new(Mutex::new(AppConfig::default()));
+        populate_cache_if_needed(&cache, &client_mock, &app_conf).await;
+
         let instances = &cache.lock().unwrap().instances;
         assert_eq!(instances.len(), 1);
         assert_eq!(instances[0], "1".to_string());
