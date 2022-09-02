@@ -10,14 +10,13 @@ use crate::{
     AppConfig, Cache, CONFIG_FILENAME,
 };
 use actix_web::{
-    error,
     web::{Data, Json},
     HttpResponse, Responder,
 };
 use anyhow::{self, Result};
 // use actix_web::Result;
-use derive_more::{Display, Error};
-use log::{error, info};
+
+use log::{info};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -37,7 +36,10 @@ pub async fn save(
     client: Data<Arc<dyn SearxProvider>>,
     app_config: Data<Mutex<AppConfig>>,
 ) -> impl Responder {
-    let fetched_instances = client.fetch_instances().await;
+    let fetched_instances = match client.fetch_instances().await {
+        Ok(it) => it,
+        Err(err) => return HttpResponse::InternalServerError().body(err.to_string()),
+    };
     info!("instanes len {}", fetched_instances.len());
     let filter = Filter {
         response_times: Some(Timings {
@@ -56,22 +58,23 @@ pub async fn save(
         .iter()
         .map(|url| url.to_string())
         .collect();
+    drop(cache_guard);
     let mut app_conf_guard = app_config.lock().unwrap();
     app_conf_guard.filter = Some(filter);
-    let app_conf = &*app_conf_guard;
+    let app_conf = app_conf_guard.clone();
+    drop(app_conf_guard);
     info!("app_conf {app_conf:?}");
 
     let save_to_file = || -> Result<_, anyhow::Error> {
         let app_conf_str = serde_json::to_string_pretty(&app_conf)?;
+
         File::create(CONFIG_FILENAME)
             .and_then(|mut file| file.write(app_conf_str.as_bytes()))
             .map(|_| ())?;
         Ok(())
     };
     match save_to_file() {
-        Ok(_) => {
-            HttpResponse::Ok().body("Data has been saved")
-        }
+        Ok(_) => HttpResponse::Ok().body("Data has been saved"),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }

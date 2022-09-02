@@ -1,3 +1,4 @@
+use anyhow::Ok;
 use rand::{self, thread_rng, Rng};
 
 use crate::{filter::get_filtered_urls, AppConfig};
@@ -22,7 +23,7 @@ pub(crate) async fn populate_cache_if_needed(
     cache: &Data<Mutex<Cache>>,
     client: &Data<Arc<dyn SearxProvider>>,
     app_config: &Data<Mutex<AppConfig>>,
-) {
+) -> anyhow::Result<()> {
     let should_fetch;
     {
         let cache_guard = cache.lock().unwrap();
@@ -30,7 +31,7 @@ pub(crate) async fn populate_cache_if_needed(
     }
     // drop(instances_guard); clippy has some issues with drop so using bracket instead { }
     if should_fetch {
-        let fetched_instances = client.fetch_instances().await;
+        let fetched_instances = client.fetch_instances().await?;
         info!("instanes len {}", fetched_instances.len());
         let app_conf_guard = app_config.lock().unwrap();
         let filter = app_conf_guard.filter.clone().unwrap_or_default();
@@ -44,6 +45,7 @@ pub(crate) async fn populate_cache_if_needed(
             .map(|url| url.to_string())
             .collect::<Vec<String>>();
     }
+    Ok(())
 }
 
 pub(crate) fn get_random_instance_url(best_grade_instance_urls: &Vec<String>) -> String {
@@ -71,7 +73,7 @@ pub(crate) mod tests {
     use core::time::Duration;
     use mock_instant::{Instant, MockClock};
 
-    fn fetch_instances_return_mock() -> Box<dyn Fn() -> Map<String, Value> + Send> {
+    fn fetch_instances_return_mock() -> Box<dyn Fn() -> anyhow::Result<Map<String, Value>> + Send> {
         let default = || {
             let mut m = Map::new();
             let json = json!({
@@ -81,7 +83,7 @@ pub(crate) mod tests {
             "network_type": "normal"
             });
             m.insert("instance".to_string(), json);
-            m
+            Ok(m)
         };
         Box::new(default)
     }
