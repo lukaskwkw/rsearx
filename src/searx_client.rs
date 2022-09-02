@@ -1,6 +1,7 @@
 #[cfg(test)]
 use mockall::automock;
 
+use anyhow::anyhow;
 use async_trait::async_trait;
 use log::info;
 use reqwest::{
@@ -21,55 +22,61 @@ static AGENT: &str =
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait SearxProvider: Sync + Send {
-    async fn fetch_instances(&self) -> Map<String, Value>;
-    async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String;
+    async fn fetch_instances(&self) -> anyhow::Result<Map<String, Value>>;
+    async fn get_instance_search_body(
+        &self,
+        instance_url: &str,
+        query: &str,
+    ) -> anyhow::Result<String>;
 }
 
 #[async_trait]
 impl SearxProvider for SearxClient {
-    async fn fetch_instances(&self) -> Map<String, Value> {
+    async fn fetch_instances(&self) -> anyhow::Result<Map<String, Value>> {
         info!("start fetching");
-        let url = Url::join(&self.base_url, "data/instances.json").unwrap();
-        let body: Value = self
-            .http_client
-            .get(url)
-            .send()
-            .await
-            .unwrap()
-            .json()
-            .await
-            .unwrap();
+        let url = Url::join(&self.base_url, "data/instances.json")?;
+        let body: Value = self.http_client.get(url).send().await?.json().await?;
         info!("end of fetching");
-        let instances: Map<String, Value> = body["instances"].as_object().unwrap().clone();
-        instances
+        let instances: Map<String, Value> = body["instances"]
+            .as_object()
+            .ok_or_else(|| anyhow!("no instances prop"))?
+            .clone();
+        Ok(instances)
     }
-    async fn get_instance_search_body(&self, instance_url: &str, query: &str) -> String {
+    async fn get_instance_search_body(
+        &self,
+        instance_url: &str,
+        query: &str,
+    ) -> anyhow::Result<String> {
         let url = get_insance_search_url(instance_url, query);
         let mut headers = HeaderMap::new();
-        url.host_str().map(|url| {
-            headers.insert(header::HOST, HeaderValue::from_str(url).unwrap());
-        }).unwrap_or_default();
+        url.host_str()
+            .map(|url| {
+                headers.insert(header::HOST, HeaderValue::from_str(url).unwrap());
+            })
+            .unwrap_or_default();
         headers.insert(header::USER_AGENT, HeaderValue::from_str(AGENT).unwrap());
         headers.insert(header::TRANSFER_ENCODING, header::TRAILER.into());
 
         headers.insert(header::ACCEPT, HeaderValue::from_str("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8").unwrap());
-        // headers.insert(header::CONNECTION, HeaderValue::from_str("keep").unwrap());
         headers.insert(
             header::ACCEPT_LANGUAGE,
-            HeaderValue::from_str("en-US,en;q=0.5").unwrap(),
+            HeaderValue::from_str("pl,en-US;q=0.7,en;q=0.3").unwrap(),
         );
+        // headers.insert(
+        //         header::ACCEPT_LANGUAGE,
+        //         HeaderValue::from_str("en-US,en;q=0.5").unwrap(),
+        //     );
         let body = self
             .http_client
             .get(url)
             .headers(headers)
             // .header("Connection", "keep")
             .send()
-            .await
-            .unwrap()
+            .await?
             .text()
-            .await
-            .unwrap();
-        convert_html_urls_to_absolute(body, instance_url)
+            .await?;
+        Ok(convert_html_urls_to_absolute(body, instance_url))
     }
 }
 

@@ -37,7 +37,7 @@ pub struct Cache {
 
 pub const HOUR: u32 = 60 * 60;
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Clone, Deserialize, Serialize, Default, Debug)]
 pub struct AppConfig {
     server_conf: Option<String>,
     filter: Option<Filter>,
