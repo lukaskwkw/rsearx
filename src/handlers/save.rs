@@ -16,7 +16,7 @@ use actix_web::{
 use anyhow::{self, Result};
 // use actix_web::Result;
 
-use log::{info};
+use log::info;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]

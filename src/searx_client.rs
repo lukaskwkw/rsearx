@@ -48,7 +48,7 @@ impl SearxProvider for SearxClient {
         instance_url: &str,
         query: &str,
     ) -> anyhow::Result<String> {
-        let url = get_insance_search_url(instance_url, query);
+        let url = get_instance_search_url(instance_url, query);
         let mut headers = HeaderMap::new();
         url.host_str()
             .map(|url| {
@@ -95,7 +95,7 @@ fn convert_html_urls_to_absolute(body: String, url: &str) -> String {
         .replace("\"/search", &format!("\"{}search", url))
 }
 
-fn get_insance_search_url(instance_url: &str, query: &str) -> Url {
+fn get_instance_search_url(instance_url: &str, query: &str) -> Url {
     let search_route = format!("/search?q={}", query);
     let url = Url::parse(instance_url)
         .unwrap()
@@ -124,7 +124,7 @@ mod tests {
         let instance = "http://searx.jp/";
         let query = "semaphore";
         let expected_url = "http://searx.jp/search?q=semaphore";
-        let result = get_insance_search_url(instance, query).to_string();
+        let result = get_instance_search_url(instance, query).to_string();
         assert_eq!(result, expected_url);
     }
 }
