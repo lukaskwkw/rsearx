@@ -6,7 +6,6 @@ use actix_web::{
     HttpResponse, Responder,
 };
 
-
 use serde::Deserialize;
 
 use super::search_helpers;

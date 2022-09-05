@@ -1,4 +1,6 @@
 /target
 *.log
 /dist
+/web
 config.json
+/tmp

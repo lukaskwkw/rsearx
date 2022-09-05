@@ -11,16 +11,20 @@ actix-rt = "2.7.0"
 actix-web = "4.1.0"
 anyhow = "1.0.63"
 async-trait = "0.1.57"
+clap = { version = "3.2.20", features = ["derive"] }
 derive_more = "0.99.17"
 log = "0.4.17"
 mock_instant = "0.2.1"
 mockall = "0.11.2"
 rand = "0.8.5"
 reqwest =  { version = "0.11.11", features = ["json"] }
+self_update = "0.30.0"
 serde = { version = "1.0.143", features = ["derive"] }
 serde_json = "1.0.83"
 simplelog = "0.12.0"
+tokio = "1.21.0"
 toml = "0.5.9"
+zip = "0.6.2"
 
 [profile.release]
 opt-level = 'z'     # Optimize for size.

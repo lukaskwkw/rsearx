@@ -22,9 +22,16 @@ use std::time::Instant;
 use handlers::search::search;
 use searx_client::SearxClient;
 
-use crate::searx_client::SearxProvider;
+use crate::{
+    frontend_manager::manager::{Executor},
+    searx_client::SearxProvider,
+};
+use args::parse;
 use handlers::save::save;
+
+mod args;
 mod filter;
+mod frontend_manager;
 mod handlers;
 mod searx_client;
 
@@ -47,9 +54,6 @@ pub static CONFIG_FILENAME: &str = "config.json";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let app_config = fs::read_to_string(CONFIG_FILENAME)
-        .map(|content| serde_json::from_str::<AppConfig>(&content).unwrap_or_default())
-        .unwrap_or_default();
     CombinedLogger::init(vec![
         TermLogger::new(
             LevelFilter::Info,
@@ -65,6 +69,16 @@ async fn main() -> std::io::Result<()> {
     ])
     .unwrap();
     info!("Logger initialized!");
+    let app_config = fs::read_to_string(CONFIG_FILENAME)
+        .map(|content| serde_json::from_str::<AppConfig>(&content).unwrap_or_default())
+        .unwrap_or_default();
+    let should_download = parse().download;
+    if should_download {
+        let mut executor = Executor::new_supplied();
+        info!("Downloading frontend app...");
+        executor.init().await.unwrap();
+        info!("Downloading done");
+    }
     info!("app_conf: {app_config:?}");
     let base_url = "https://searx.space/".to_string();
     let client = SearxClient::new(base_url);
@@ -81,9 +95,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .route("/search", web::get().to(search))
             .route("/save", web::post().to(save))
-            .service(afs::Files::new("/", "./dist").index_file("index.html")) // this has to be
-            // after all other
-            // routes
+            .service(afs::Files::new("/", "./web").index_file("index.html")) // this has to be called after all other routes
             .app_data(client.clone())
             .app_data(cache.clone())
             .app_data(app_config.clone())
